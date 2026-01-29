@@ -1,56 +1,15 @@
-from openai import AsyncOpenAI
 import httpx
 import random
 import time
 from typing import Optional
 
 from app.config import (
-    AI_TEXT_API_URL,
-    AI_TEXT_API_KEY,
     AI_IMAGE_API_URL,
     AI_IMAGE_API_KEY,
-    AI_TEXT_MODEL,
     AI_IMAGE_MODEL,
     AI_IMAGE_SIZE,
     IMAGE_PROMPT,
-    BLESSING_SYSTEM_PROMPT,
 )
-
-# 初始化 OpenAI 客户端（指向自托管服务）
-text_client = AsyncOpenAI(
-    base_url=AI_TEXT_API_URL,
-    api_key=AI_TEXT_API_KEY,
-)
-
-
-async def generate_blessing_text(prompt: Optional[str] = None) -> str:
-    """生成祝福语文本"""
-    # 检查配置
-    if not AI_TEXT_API_URL:
-        raise Exception("AI_TEXT_API_URL 未配置，请在 .env 文件中设置")
-    if not AI_TEXT_API_KEY:
-        raise Exception("AI_TEXT_API_KEY 未配置，请在 .env 文件中设置")
-    
-    print(f"[AI] 调用文本API: {AI_TEXT_API_URL}, model={AI_TEXT_MODEL}")
-    
-    # 构建消息
-    messages = [{"role": "system", "content": BLESSING_SYSTEM_PROMPT}]
-    if prompt:
-        messages.append({"role": "user", "content": prompt})
-    messages.append({"role": "user", "content": "请结合上面的提示生成"})
-    
-    try:
-        response = await text_client.chat.completions.create(
-            model=AI_TEXT_MODEL,
-            messages=messages,
-            max_tokens=100,
-            temperature=0.8,
-        )
-        
-        return response.choices[0].message.content.strip()
-    except Exception as e:
-        print(f"[AI] 文本生成错误: {e}")
-        raise
 
 
 # 随机修饰词池 - 用于增加生图的多样性

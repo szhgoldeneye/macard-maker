@@ -105,6 +105,7 @@ export function BlindboxPage() {
   const [error, setError] = useState<string | null>(null);
   const [cardFullyOut, setCardFullyOut] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);  // 全屏预览图片
+  const [bottomBgNum, setBottomBgNum] = useState(1);  // 底部装饰图编号
   const [normalHongbaoY, setNormalHongbaoY] = useState(0);  // 保存正常状态的红包位置
   const [fullOutHongbaoY, setFullOutHongbaoY] = useState(0);  // 保存完全弹出时的红包位置
   const [normalCardOffset, setNormalCardOffset] = useState(0);  // 保存正常状态的卡片偏移
@@ -330,6 +331,8 @@ export function BlindboxPage() {
     const apiPromise = generateCardImage()
       .then(result => {
         setCardImage(result.url);
+        // 随机底部装饰图
+        setBottomBgNum(Math.floor(Math.random() * 14) + 1);
         apiResolved = true;
         // API 返回后取消缓慢变大动画
         slowGrowRef.current?.cancel();
@@ -461,6 +464,14 @@ export function BlindboxPage() {
         footerImg.src = '/backgrounds/ecnu-name.png';
       });
       
+      // 加载底部装饰图
+      const bottomDecorImg = new Image();
+      await new Promise((resolve, reject) => {
+        bottomDecorImg.onload = resolve;
+        bottomDecorImg.onerror = reject;
+        bottomDecorImg.src = `/backgrounds/${bottomBgNum}.png`;
+      });
+      
       // 按比例计算尺寸（基于 360px 宽度下的尺寸）
       const scale = img.width / 360;
       const footerHeight = Math.round(36 * scale);
@@ -480,6 +491,28 @@ export function BlindboxPage() {
       
       // 绘制原图
       ctx.drawImage(img, 0, 0);
+      
+      // 绘制底部装饰图（在页脚下层，带阴影，与 CSS 保持一致）
+      const maxDecorWidth = canvasWidth * 0.85;  // max-width: 85%
+      const maxDecorHeight = canvasHeight * 0.25;  // max-height: 25%
+      const decorLeft = Math.round(15 * scale);  // left: 15px
+      const decorBottom = Math.round(20 * scale);  // bottom: 20px
+      
+      // 计算实际尺寸（保持宽高比，不超过最大限制）
+      const imgRatio = bottomDecorImg.width / bottomDecorImg.height;
+      let finalDecorWidth = maxDecorWidth;
+      let finalDecorHeight = finalDecorWidth / imgRatio;
+      if (finalDecorHeight > maxDecorHeight) {
+        finalDecorHeight = maxDecorHeight;
+        finalDecorWidth = finalDecorHeight * imgRatio;
+      }
+      
+      ctx.save();
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
+      ctx.shadowBlur = 8 * scale;
+      ctx.shadowOffsetY = -4 * scale;
+      ctx.drawImage(bottomDecorImg, decorLeft, canvasHeight - finalDecorHeight - decorBottom, finalDecorWidth, finalDecorHeight);
+      ctx.restore();
       
       // 绘制页脚背景（深红半透明，叠加在图片底部）
       const footerY = canvasHeight - footerHeight;
@@ -551,7 +584,7 @@ export function BlindboxPage() {
       const labelRadius = Math.round(10 * scale);
       
       // 绘制胶囊背景
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.55)';
       ctx.beginPath();
       ctx.roundRect(labelX, labelY, labelWidth, labelHeight, labelRadius);
       ctx.fill();
@@ -568,7 +601,7 @@ export function BlindboxPage() {
       console.error('合成图片失败:', err);
       alert('合成图片失败，请重试');
     }
-  }, [cardImage]);
+  }, [cardImage, bottomBgNum]);
 
   const isAnimating = step !== 'home';
 
@@ -629,6 +662,7 @@ export function BlindboxPage() {
               shaking={shaking}
               glowing={glowing}
               cardImage={cardImage}
+              bottomBgNum={bottomBgNum}
               cardVisible={cardVisible}
               cardOffset={cardOffset}
               transitionDuration={400}
@@ -649,7 +683,7 @@ export function BlindboxPage() {
       {/* 结果页按钮 - 完全弹出模式下隐藏 */}
       {step === 'result' && !cardFullyOut && (
         <div className="result-buttons">
-          <button className="btn-primary" onClick={handleSave}>保存图片</button>
+          <button className="btn-primary" onClick={handleSave}>分享贺年卡</button>
           <button className="btn-secondary" onClick={handleReset}>新的惊喜</button>
         </div>
       )}

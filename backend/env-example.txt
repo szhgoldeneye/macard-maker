@@ -1,11 +1,6 @@
 # 复制此文件为 .env 并修改配置
 # cp env-example.txt .env
 
-# AI 服务配置
-# 文本生成 API（OpenAI 兼容）
-AI_TEXT_API_URL=http://localhost:8000/v1
-AI_TEXT_API_KEY=your-api-key
-
 # 文生图 API（ECNU 接口）
 AI_IMAGE_API_URL=https://chat.ecnu.edu.cn/open/api/v1/images/generations
 AI_IMAGE_API_KEY=your-api-key
@@ -33,6 +28,4 @@ FRONTEND_URL=http://localhost:5173
 
 # 提示词配置（可选，有默认值）
 IMAGE_PROMPT=Chinese New Year greeting card background, traditional Chinese style, golden clouds, red lanterns
-BLESSING_SYSTEM_PROMPT=你是一个祝福语生成专家。请生成一条简短、优美的新年祝福语。要求：语言优美、简短精炼不超过30字、适合贺卡。只输出祝福语内容。
-AI_TEXT_MODEL=gpt-3.5-turbo
 

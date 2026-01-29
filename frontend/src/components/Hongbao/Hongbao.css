@@ -134,6 +134,7 @@
   align-items: center;
   justify-content: flex-start;
   padding: 0 12px;
+  z-index: 2;
 }
 
 .hongbao-card-footer .footer-name {
@@ -165,6 +166,21 @@
   height: 40px !important;
 }
 
+/* 底部装饰图 - 在页脚下层 */
+.hongbao-card-slot .card-bottom-decoration {
+  position: absolute;
+  bottom: 20px;
+  left: 15px;
+  max-width: 85%;
+  max-height: 25%;
+  height: auto;
+  object-fit: contain;
+  object-position: bottom left;
+  z-index: 1;
+  pointer-events: none;
+  filter: drop-shadow(0 -4px 8px rgba(0, 0, 0, 0.3));
+}
+
 /* AI生成标签 - 图片左上角胶囊 */
 .hongbao-card-slot .ai-label {
   position: absolute;
@@ -172,7 +188,7 @@
   left: 8px;
   font-size: 10px;
   color: rgba(180, 60, 60, 0.6);
-  background: rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.30);
   padding: 3px 8px;
   border-radius: 10px;
   white-space: nowrap;

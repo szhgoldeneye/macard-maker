@@ -16,6 +16,8 @@ export interface HongbaoProps {
   fixed?: boolean;
   /** 内部卡片图片 */
   cardImage?: string;
+  /** 底部装饰图编号 (1-14) */
+  bottomBgNum?: number;
   /** 是否显示卡片（弹出状态） */
   cardVisible?: boolean;
   /** 卡片弹出的位置偏移 (相对于红包顶部) */
@@ -50,6 +52,7 @@ export const Hongbao = forwardRef<HongbaoRef, HongbaoProps>(({
   position = 'center',
   fixed = false,
   cardImage,
+  bottomBgNum = 1,
   cardVisible = false,
   cardOffset = 0,
   shaking = false,
@@ -179,9 +182,20 @@ export const Hongbao = forwardRef<HongbaoRef, HongbaoProps>(({
             }
           }}
         >
-          <img src={cardImage} alt="贺卡" />
+          <img 
+            src={cardImage} 
+            alt="贺卡" 
+            onContextMenu={e => e.preventDefault()}
+            draggable={false}
+          />
           {/* AI生成标签 - 左上角 */}
           <span className="ai-label">AI生成</span>
+          {/* 底部装饰图 - 在页脚下层 */}
+          <img 
+            src={`/backgrounds/${bottomBgNum}.png`} 
+            alt="" 
+            className="card-bottom-decoration" 
+          />
           {/* 页脚 - 烫金名称 + 二维码 */}
           <div className="hongbao-card-footer">
             <img src="/backgrounds/ecnu-name.png" alt="华东师范大学" className="footer-name" />
