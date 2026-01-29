@@ -629,7 +629,7 @@ export function BlindboxPage() {
       {/* 首页 */}
       {step === 'home' && (
         <div className="page page-home">
-          <h1 className="title">贺年卡</h1>
+          <img src="/backgrounds/title.png" alt="贺年卡" className="title" />
           <div className="hongbao-wrapper" onClick={handleStart}>
             {/* 首页少量粒子效果 */}
             {particlesReady && (

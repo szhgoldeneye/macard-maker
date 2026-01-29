@@ -15,13 +15,6 @@ IMAGE_PROMPT = os.getenv(
     "Chinese New Year greeting card background, traditional Chinese style, golden clouds, red lanterns, festive atmosphere, elegant and auspicious, high quality"
 )
 
-# 阿里云 OSS 配置
-OSS_ACCESS_KEY_ID = os.getenv("OSS_ACCESS_KEY_ID", "")
-OSS_ACCESS_KEY_SECRET = os.getenv("OSS_ACCESS_KEY_SECRET", "")
-OSS_ENDPOINT = os.getenv("OSS_ENDPOINT", "oss-cn-shanghai.aliyuncs.com")
-OSS_BUCKET_NAME = os.getenv("OSS_BUCKET_NAME", "ecnunic-data-public")
-OSS_PREFIX = os.getenv("OSS_PREFIX", "macard-test")  # 目录前缀，不影响其他应用
-
 # OAuth2 SSO 配置
 OAUTH2_CLIENT_ID = os.getenv("OAUTH2_CLIENT_ID", "")
 OAUTH2_CLIENT_SECRET = os.getenv("OAUTH2_CLIENT_SECRET", "")

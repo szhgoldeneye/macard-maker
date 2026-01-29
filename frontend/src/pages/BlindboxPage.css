@@ -90,12 +90,8 @@
 }
 
 .title {
-  font-size: 3rem;
-  font-weight: 900;
-  color: var(--gold-light);
-  text-shadow: 0 4px 8px rgba(0,0,0,0.3), 0 0 40px rgba(244, 208, 63, 0.3);
-  letter-spacing: 0.1em;
-  margin: 0;
+  width: 65%;
+  filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3)) drop-shadow(0 0 40px rgba(244, 208, 63, 0.3));
 }
 
 .hongbao-wrapper {

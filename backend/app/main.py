@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 
 from app.config import FRONTEND_URL
 from app.database import init_db
-from app.api import auth, ai, card, history
+from app.api import auth, ai
 
 
 @asynccontextmanager
@@ -27,8 +27,6 @@ app.add_middleware(
 # 注册路由
 app.include_router(auth.router, prefix="/api/auth", tags=["认证"])
 app.include_router(ai.router, prefix="/api/ai", tags=["AI生成"])
-app.include_router(card.router, prefix="/api/card", tags=["贺卡"])
-app.include_router(history.router, prefix="/api/history", tags=["历史记录"])
 
 
 @app.get("/api/health")
