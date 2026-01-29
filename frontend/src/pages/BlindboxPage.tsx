@@ -3,7 +3,11 @@ import Particles, { initParticlesEngine } from '@tsparticles/react';
 import { loadSlim } from '@tsparticles/slim';
 import { Hongbao } from '../components/Hongbao';
 import confetti from 'canvas-confetti';
+import QRCodeStyling from 'qr-code-styling';
 import './BlindboxPage.css';
+
+// 二维码 URL
+const QR_CODE_URL = import.meta.env.VITE_QR_CODE_URL || 'https://macard.ecnu.edu.cn';
 
 type Step = 
   | 'home'
@@ -100,6 +104,7 @@ export function BlindboxPage() {
   const [particlesReady, setParticlesReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [cardFullyOut, setCardFullyOut] = useState(false);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);  // 全屏预览图片
   const [normalHongbaoY, setNormalHongbaoY] = useState(0);  // 保存正常状态的红包位置
   const [fullOutHongbaoY, setFullOutHongbaoY] = useState(0);  // 保存完全弹出时的红包位置
   const [normalCardOffset, setNormalCardOffset] = useState(0);  // 保存正常状态的卡片偏移
@@ -263,10 +268,50 @@ export function BlindboxPage() {
     });
   }, []);
 
+  // 缓慢变大动画（减速曲线，可取消），用于等待 API 期间
+  const slowGrowRef = useRef<{ cancel: () => void } | null>(null);
+  const currentSizeRef = useRef(200);
+  
+  const startSlowGrow = useCallback((from: number, to: number, duration: number) => {
+    return new Promise<number>(resolve => {
+      const startTime = performance.now();
+      let cancelled = false;
+      
+      const animate = (now: number) => {
+        if (cancelled) {
+          resolve(currentSizeRef.current);
+          return;
+        }
+        const elapsed = now - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        // easeOutQuad: 减速曲线，速度越来越慢
+        const eased = 1 - (1 - progress) * (1 - progress);
+        const currentSize = from + (to - from) * eased;
+        currentSizeRef.current = currentSize;
+        setSize(currentSize);
+        
+        if (progress < 1) {
+          requestAnimationFrame(animate);
+        } else {
+          resolve(currentSize);
+        }
+      };
+      
+      slowGrowRef.current = {
+        cancel: () => {
+          cancelled = true;
+        }
+      };
+      
+      requestAnimationFrame(animate);
+    });
+  }, []);
+
   // 开始流程
   const handleStart = useCallback(async () => {
     // 确保从初始状态开始
     setSize(200);
+    currentSizeRef.current = 200;
     setShaking(false);
     setError(null);
     
@@ -281,13 +326,19 @@ export function BlindboxPage() {
     setTimeout(() => startConvergeParticles(), 50);
     
     // 同时开始调用 API 和动画
+    let apiResolved = false;
     const apiPromise = generateCardImage()
       .then(result => {
         setCardImage(result.url);
+        apiResolved = true;
+        // API 返回后取消缓慢变大动画
+        slowGrowRef.current?.cancel();
         return result;
       })
       .catch(err => {
         console.error('生成图片失败:', err);
+        apiResolved = true;
+        slowGrowRef.current?.cancel();
         // 失败时使用占位图
         const fallbackUrl = `https://picsum.photos/seed/${Date.now()}/720/1280`;
         setCardImage(fallbackUrl);
@@ -295,15 +346,22 @@ export function BlindboxPage() {
         return { url: fallbackUrl, width: 720, height: 1280 };
       });
     
-    // 平滑加速变大：200 -> 320，在280时开始振动
-    await animateSize(200, 320, 1200, 280);
+    // Step 1: 平滑加速变大：200 -> 280，在280时开始振动
+    await animateSize(200, 280, 800, 280);
+    currentSizeRef.current = 280;
+    setShaking(true);
 
-    // Step 2: 继续变大到最大
-    setStep('maxSize');
-    await animateSize(320, 400, 400);
+    // Step 2: 如果 API 还没返回，继续缓慢变大 280 -> 320（减速曲线）
+    if (!apiResolved) {
+      await startSlowGrow(280, 320, 3000);  // 3秒内缓慢变大到320
+    }
 
     // 等待 API 返回（如果还没完成）
     const imageResult = await apiPromise;
+
+    // Step 3: API 返回后，固定 200ms 变大到最大
+    setStep('maxSize');
+    await animateSize(currentSizeRef.current, 400, 200);
     
     // 根据图片尺寸动态计算位置
     const hongbaoWidth = 400;
@@ -344,7 +402,7 @@ export function BlindboxPage() {
     setCardOffset(finalCardOffset);
     setHongbaoY(normalY);
     setGlowing(false);
-  }, [startConvergeParticles, stopConvergeParticles, fireConfettiEffect, animateSize]);
+  }, [startConvergeParticles, stopConvergeParticles, fireConfettiEffect, animateSize, startSlowGrow]);
 
   // 切换卡片完全弹出/正常状态
   const toggleCardFullyOut = useCallback(() => {
@@ -381,10 +439,136 @@ export function BlindboxPage() {
     handleStart();
   }, [stopConvergeParticles, handleStart]);
 
-  // 保存图片
-  const handleSave = useCallback(() => {
-    alert('请长按图片保存到相册');
-  }, []);
+  // 保存图片 - 用 canvas 合成完整图片
+  const handleSave = useCallback(async () => {
+    if (!cardImage) return;
+    
+    try {
+      // 加载原图
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      await new Promise((resolve, reject) => {
+        img.onload = resolve;
+        img.onerror = reject;
+        img.src = cardImage;
+      });
+      
+      // 加载页脚图片
+      const footerImg = new Image();
+      await new Promise((resolve, reject) => {
+        footerImg.onload = resolve;
+        footerImg.onerror = reject;
+        footerImg.src = '/backgrounds/ecnu-name.png';
+      });
+      
+      // 按比例计算尺寸（基于 360px 宽度下的尺寸）
+      const scale = img.width / 360;
+      const footerHeight = Math.round(36 * scale);
+      // 二维码放在页脚内，不凸出
+      const qrSize = Math.round(32 * scale);
+      const qrBoxSize = footerHeight;  // 和页脚一样高
+      const padding = Math.round(12 * scale);
+      
+      const canvasWidth = img.width;
+      const canvasHeight = img.height;  // 不延长，叠加在图片上
+      
+      // 创建 canvas
+      const canvas = document.createElement('canvas');
+      canvas.width = canvasWidth;
+      canvas.height = canvasHeight;
+      const ctx = canvas.getContext('2d')!;
+      
+      // 绘制原图
+      ctx.drawImage(img, 0, 0);
+      
+      // 绘制页脚背景（深红半透明，叠加在图片底部）
+      const footerY = canvasHeight - footerHeight;
+      const gradient = ctx.createLinearGradient(0, footerY, 0, canvasHeight);
+      gradient.addColorStop(0, 'rgba(139, 26, 26, 0.85)');
+      gradient.addColorStop(1, 'rgba(107, 21, 21, 0.9)');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, footerY, canvasWidth, footerHeight);
+      
+      // 二维码位置（在页脚右侧）
+      const qrX = canvasWidth - qrBoxSize;
+      const qrY = footerY;  // 和页脚顶部对齐
+      
+      // 绘制页脚文字图片（居左）
+      const footerImgHeight = Math.round(24 * scale);
+      const footerImgWidth = footerImg.width * (footerImgHeight / footerImg.height);
+      const footerImgY = footerY + (footerHeight - footerImgHeight) / 2;
+      ctx.drawImage(footerImg, padding, footerImgY, footerImgWidth, footerImgHeight);
+      
+      // 生成圆点风格二维码
+      const tempDiv = document.createElement('div');
+      tempDiv.style.position = 'absolute';
+      tempDiv.style.left = '-9999px';
+      document.body.appendChild(tempDiv);
+      
+      const qrCode = new QRCodeStyling({
+        width: qrSize,
+        height: qrSize,
+        data: QR_CODE_URL,
+        type: 'canvas',
+        dotsOptions: {
+          color: '#f4d03f',
+          type: 'dots',
+        },
+        backgroundOptions: {
+          color: 'transparent',
+        },
+        cornersSquareOptions: {
+          type: 'dot',
+        },
+        cornersDotOptions: {
+          type: 'dot',
+        },
+      });
+      
+      qrCode.append(tempDiv);
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // 获取二维码 canvas，居中放置在页脚右侧
+      const qrCanvas = tempDiv.querySelector('canvas');
+      if (qrCanvas) {
+        const qrDrawX = qrX + (qrBoxSize - qrSize) / 2;
+        const qrDrawY = qrY + (qrBoxSize - qrSize) / 2;
+        ctx.drawImage(qrCanvas, qrDrawX, qrDrawY, qrSize, qrSize);
+      }
+      tempDiv.remove();
+      
+      // 绘制 "AI生成" 胶囊标签（图片左上角）
+      const fontSize = Math.round(10 * scale);
+      const labelPaddingH = Math.round(8 * scale);
+      const labelPaddingV = Math.round(3 * scale);
+      const labelText = 'AI生成';
+      ctx.font = `${fontSize}px sans-serif`;
+      const textWidth = ctx.measureText(labelText).width;
+      const labelWidth = textWidth + labelPaddingH * 2;
+      const labelHeight = fontSize + labelPaddingV * 2;
+      const labelX = Math.round(8 * scale);
+      const labelY = Math.round(8 * scale);
+      const labelRadius = Math.round(10 * scale);
+      
+      // 绘制胶囊背景
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+      ctx.beginPath();
+      ctx.roundRect(labelX, labelY, labelWidth, labelHeight, labelRadius);
+      ctx.fill();
+      
+      // 绘制文字
+      ctx.fillStyle = 'rgba(180, 60, 60, 0.6)';
+      ctx.textAlign = 'left';
+      ctx.fillText(labelText, labelX + labelPaddingH, labelY + labelPaddingV + fontSize * 0.85);
+      
+      // 转为图片并显示预览
+      const dataUrl = canvas.toDataURL('image/png', 1);
+      setPreviewImage(dataUrl);
+    } catch (err) {
+      console.error('合成图片失败:', err);
+      alert('合成图片失败，请重试');
+    }
+  }, [cardImage]);
 
   const isAnimating = step !== 'home';
 
@@ -467,6 +651,17 @@ export function BlindboxPage() {
         <div className="result-buttons">
           <button className="btn-primary" onClick={handleSave}>保存图片</button>
           <button className="btn-secondary" onClick={handleReset}>新的惊喜</button>
+        </div>
+      )}
+
+      {/* 全屏预览 - 方便长按保存 */}
+      {previewImage && (
+        <div className="preview-overlay" onClick={() => setPreviewImage(null)}>
+          <div className="preview-content" onClick={e => e.stopPropagation()}>
+            <img src={previewImage} alt="贺年卡" />
+            <p className="preview-tip">长按图片保存到相册</p>
+            <button className="preview-close" onClick={() => setPreviewImage(null)}>关闭</button>
+          </div>
         </div>
       )}
     </div>

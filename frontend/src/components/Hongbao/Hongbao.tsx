@@ -1,5 +1,9 @@
 import { useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
+import QRCodeStyling from 'qr-code-styling';
 import './Hongbao.css';
+
+// 二维码 URL，可通过环境变量配置
+const QR_CODE_URL = import.meta.env.VITE_QR_CODE_URL || 'https://macard.ecnu.edu.cn';
 
 export interface HongbaoProps {
   /** 红包大小 (宽度，高度自动按 1:1.4 比例) */
@@ -58,10 +62,39 @@ export const Hongbao = forwardRef<HongbaoRef, HongbaoProps>(({
   className = '',
 }, ref) => {
   const containerRef = useRef<HTMLDivElement>(null);
+  const qrRef = useRef<HTMLDivElement>(null);
   
   const width = size;
   const height = size * 1.4;
   const flapHeight = size * 0.5;
+
+  // 初始化圆点风格二维码
+  useEffect(() => {
+    if (!qrRef.current || !cardImage) return;
+    
+    // 清空之前的内容
+    qrRef.current.innerHTML = '';
+    
+    const qrCode = new QRCodeStyling({
+      width: 40,
+      height: 40,
+      data: QR_CODE_URL,
+      dotsOptions: {
+        color: '#f4d03f',
+        type: 'dots',  // 圆点风格
+      },
+      backgroundOptions: {
+        color: 'transparent',
+      },
+      cornersSquareOptions: {
+        type: 'dot',
+      },
+      cornersDotOptions: {
+        type: 'dot',
+      },
+    });
+    qrCode.append(qrRef.current);
+  }, [cardImage]);
 
   useImperativeHandle(ref, () => ({
     getElement: () => containerRef.current,
@@ -147,11 +180,14 @@ export const Hongbao = forwardRef<HongbaoRef, HongbaoProps>(({
           }}
         >
           <img src={cardImage} alt="贺卡" />
-          {/* 二维码占位 */}
-          <div className="hongbao-qrcode-placeholder">
-            <svg viewBox="0 0 24 24" fill="currentColor">
-              <path d="M3 3h8v8H3V3zm2 2v4h4V5H5zm8-2h8v8h-8V3zm2 2v4h4V5h-4zM3 13h8v8H3v-8zm2 2v4h4v-4H5zm13-2h3v2h-3v-2zm-5 0h2v3h-2v-3zm2 3h3v2h-3v-2zm0 4h5v2h-5v-2zm3-4h2v4h-2v-4z"/>
-            </svg>
+          {/* AI生成标签 - 左上角 */}
+          <span className="ai-label">AI生成</span>
+          {/* 页脚 - 烫金名称 + 二维码 */}
+          <div className="hongbao-card-footer">
+            <img src="/backgrounds/ecnu-name.png" alt="华东师范大学" className="footer-name" />
+            <div className="footer-qrcode">
+              <div ref={qrRef} className="qrcode-dots" />
+            </div>
           </div>
         </div>
       )}
